@@ -1,31 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'features/news/data/models/news_model.dart';
 import 'features/news/data/models/news_model.g.dart';
 import 'features/news/presentation/pages/main_screen.dart';
-import 'package:loading_animation_widget/loading_animation_widget.dart';
+import 'package:loading_animation_widget/loading_animation_widget.dart'; // Import the package
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // Ensure Flutter is initialized
+  // Ensure the Flutter widgets binding is initialized.
+  WidgetsFlutterBinding.ensureInitialized();
 
-  try {
-    // Initialize Hive (No need for appDir)
-    await Hive.initFlutter();
+  // Initialize Hive and open your box.
+  await Hive.initFlutter((await getApplicationDocumentsDirectory()).path);
+  Hive.registerAdapter(NewsModelAdapter());
+  await Hive.openBox<NewsModel>('news');
 
-    // Register Hive Adapter (Make sure it's generated)
-    Hive.registerAdapter(NewsModelAdapter());
-
-    // Open Hive Box Safely
-    if (!Hive.isBoxOpen('news')) {
-      await Hive.openBox<NewsModel>('news');
-    }
-
-    // Run the app
-    runApp(ProviderScope(child: MyApp()));
-  } catch (e, stack) {
-    debugPrint('🔥 Error initializing Hive: $e\n$stack'); // Log error for debugging
-  }
+  runApp(ProviderScope(child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {
@@ -36,7 +27,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'News App',
       home: FutureBuilder<void>(
-        future: Future.delayed(Duration(seconds: 2)), // Optional delay
+        future: _initializeApp(),  // Call the initialization function
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Scaffold(
@@ -55,11 +46,24 @@ class MyApp extends StatelessWidget {
               ),
             );
           } else {
-            return MainScreen(); // App ready, show MainScreen
+            return MainScreen();  // App ready, show MainScreen
           }
         },
       ),
       debugShowCheckedModeBanner: false,
     );
   }
+
+  // Function to initialize the app
+  Future<void> _initializeApp() async {
+    try {
+      // Initialize Hive and register the adapter
+      await Hive.initFlutter();
+      Hive.registerAdapter(NewsModelAdapter());
+      await Hive.openBox<NewsModel>('news');
+    } catch (e) {
+      print('Error during Hive initialization: $e');
+    }
+  }
+
 }
